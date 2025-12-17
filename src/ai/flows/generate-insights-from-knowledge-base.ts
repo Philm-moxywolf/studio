@@ -34,18 +34,21 @@ const prompt = ai.definePrompt({
   name: 'generateInsightsPrompt',
   input: {schema: GenerateInsightsInputSchema},
   output: {schema: GenerateInsightsOutputSchema},
-  model: 'gemini-3-pro-preview',
   prompt: `You are an expert in analyzing company information and generating insights for signal hunting.
 
   Based on the following company information, business vertical, USP, and JTBD hunches, generate initial insights or search queries to start the signal hunting process.
 
-  Company Information:\n  {{knowledgeBase}}
+  Company Information:
+  {{knowledgeBase}}
 
-  Business Vertical:\n  {{businessVertical}}
+  Business Vertical:
+  {{businessVertical}}
 
-  USPs:\n  {{usps}}
+  USPs:
+  {{usps}}
 
-  JTBD Hunches:\n  {{jtbdHunches}}
+  JTBD Hunches:
+  {{jtbdHunches}}
 
   Insights or Search Queries:
 `,
