@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview Generates a final report by ingesting agent responses from the vector store.
+ * @fileOverview Generates a final report by ingesting agent responses.
  *
  * - generateReport - A function that generates the final report.
  * - GenerateReportInput - The input type for the generateReport function.
@@ -11,17 +11,14 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
+// 1. Define Schemas
 const GenerateReportInputSchema = z.object({
   jtbdHunches: z.string().describe('Job to be Done hunches.'),
   struggles: z.string().describe('Problems job executors are dealing with.'),
   businessVertical: z.string().describe('The business vertical.'),
   usps: z.string().describe('Unique selling propositions.'),
-  knowledgeBase: z
-    .string()
-    .describe('Company information knowledge base.'),
-  agentResponses: z
-    .array(z.string())
-    .describe('Agent responses from various platforms.'),
+  knowledgeBase: z.string().describe('Company information knowledge base.'),
+  agentResponses: z.array(z.string()).describe('Agent responses from various platforms.'),
 });
 export type GenerateReportInput = z.infer<typeof GenerateReportInputSchema>;
 
@@ -30,34 +27,35 @@ const GenerateReportOutputSchema = z.object({
 });
 export type GenerateReportOutput = z.infer<typeof GenerateReportOutputSchema>;
 
+
+// 2. Define the Prompt GLOBALLY
+// This prevents the "Prompt already registered" error
 const generateReportPrompt = ai.definePrompt({
   name: 'generateReportPrompt',
-  input: { schema: GenerateReportInputSchema },
-  output: { schema: GenerateReportOutputSchema },
-  prompt: `You are an expert report generator. You will receive information about JTBD hunches, struggles, business vertical, USP's, a company knowledge base, and agent responses from various platforms.
+  input: {schema: GenerateReportInputSchema},
+  // We use the default model from src/ai/genkit.ts
+  prompt: `You are an expert report generator.
 
-  Your goal is to create a final report that includes all of the information and ensures that all URLs and citations are correctly linked and coherent.
+Analyze the following data:
 
-  JTBD Hunch: {{jtbdHunches}}
-  Struggles: {{struggles}}
-  Business Vertical: {{businessVertical}}
-  USPs: {{usps}}
-  Knowledge Base: {{knowledgeBase}}
-  
-  Agent Responses:
-  {{#each agentResponses}}
-  - {{this}}
-  {{/each}}
+Business Vertical: {{businessVertical}}
+USPs: {{usps}}
+Knowledge Base: {{knowledgeBase}}
 
-  Final Report: `,
+JTBD Hunches: {{jtbdHunches}}
+Struggles: {{struggles}}
+
+Agent Responses:
+{{#each agentResponses}}
+- {{this}}
+{{/each}}
+
+Create a final report that synthesizes this information. Ensure all citations are coherent.
+`,
 });
 
 
-export async function generateReport(input: GenerateReportInput): Promise<GenerateReportOutput> {
-  return generateReportFlow(input);
-}
-
-
+// 3. Define the Flow
 const generateReportFlow = ai.defineFlow(
   {
     name: 'generateReportFlow',
@@ -65,12 +63,21 @@ const generateReportFlow = ai.defineFlow(
     outputSchema: GenerateReportOutputSchema,
   },
   async input => {
-    const { output } = await generateReportPrompt(input);
+    // 4. Call the prompt
+    const response = await generateReportPrompt(input);
+    const reportText = response.text();
 
-    if (!output) {
+    if (!reportText) {
       throw new Error('AI model returned empty response.');
     }
 
-    return output;
+    return {
+      report: reportText,
+    };
   }
 );
+
+// 4. Define the exported function for the server action
+export async function generateReport(input: GenerateReportInput): Promise<GenerateReportOutput> {
+  return generateReportFlow(input);
+}

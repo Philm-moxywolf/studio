@@ -50,11 +50,6 @@ const generateInsightsPrompt = ai.definePrompt({
 `,
 });
 
-export async function generateInsights(input: GenerateInsightsInput): Promise<GenerateInsightsOutput> {
-  return generateInsightsFlow(input);
-}
-
-
 const generateInsightsFlow = ai.defineFlow(
   {
     name: 'generateInsightsFlow',
@@ -63,6 +58,13 @@ const generateInsightsFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await generateInsightsPrompt(input);
-    return output!;
+    if (!output) {
+      throw new Error('AI model returned empty response for insight generation.');
+    }
+    return output;
   }
 );
+
+export async function generateInsights(input: GenerateInsightsInput): Promise<GenerateInsightsOutput> {
+  return generateInsightsFlow(input);
+}

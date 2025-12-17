@@ -58,13 +58,6 @@ const extractionAndClassificationPrompt = ai.definePrompt({
 `,
 });
 
-
-// Define the main flow function
-export async function extractAndClassifyUserSignals(input: ExtractAndClassifyUserSignalsInput): Promise<ExtractAndClassifyUserSignalsOutput> {
-  return extractAndClassifyUserSignalsFlow(input);
-}
-
-
 // Define the flow
 const extractAndClassifyUserSignalsFlow = ai.defineFlow(
   {
@@ -74,6 +67,14 @@ const extractAndClassifyUserSignalsFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await extractionAndClassificationPrompt(input);
-    return output!;
+    if (!output) {
+      throw new Error('AI model returned empty response for signal classification.');
+    }
+    return output;
   }
 );
+
+// Define the main flow function
+export async function extractAndClassifyUserSignals(input: ExtractAndClassifyUserSignalsInput): Promise<ExtractAndClassifyUserSignalsOutput> {
+  return extractAndClassifyUserSignalsFlow(input);
+}
