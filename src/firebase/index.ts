@@ -1,31 +1,31 @@
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, deleteApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
 
 export function initializeFirebase() {
-  if (!getApps().length) {
-    let firebaseApp;
-    
-    // FIX: Force use of explicit config. 
-    // The previous auto-init was picking up restricted internal credentials in your dev environment.
-    if (firebaseConfig && Object.keys(firebaseConfig).length > 0) {
-      try {
-        firebaseApp = initializeApp(firebaseConfig);
-      } catch (e) {
-        console.warn('Config init failed, falling back', e);
-        firebaseApp = initializeApp(); 
-      }
-    } else {
-      firebaseApp = initializeApp();
-    }
+  let firebaseApp: FirebaseApp;
 
-    return getSdks(firebaseApp);
+  // 1. Check if an app already exists
+  if (getApps().length > 0) {
+    firebaseApp = getApp();
+    
+    // 2. CRITICAL FIX: Check if the existing app is the broken "auto-init" version
+    // If it's missing the apiKey from your config, it's the wrong instance.
+    if (!firebaseApp.options.apiKey && firebaseConfig?.apiKey) {
+      console.warn("Detected misconfigured Firebase App (App Hosting ghost). Resetting...");
+      deleteApp(firebaseApp); // Destroy the bad instance
+      firebaseApp = initializeApp(firebaseConfig); // Re-initialize with YOUR config
+    }
+  } else {
+    // 3. No app exists, initialize fresh with your config
+    // Fallback to empty object if config is missing to prevent crash
+    firebaseApp = initializeApp(firebaseConfig || {});
   }
 
-  return getSdks(getApp());
+  return getSdks(firebaseApp);
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {

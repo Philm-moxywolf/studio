@@ -1,28 +1,27 @@
 'use client';
 
-import React, { useMemo, useEffect, type ReactNode } from 'react';
+import React, { useMemo, type ReactNode } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
+
+// --- MOVED OUTSIDE COMPONENT ---
+// SAFETY PATCH: Run immediately to catch extension errors before hydration
+if (typeof window !== 'undefined' && window.MutationObserver) {
+  const originalObserve = window.MutationObserver.prototype.observe;
+  window.MutationObserver.prototype.observe = function (target, options) {
+    if (!(target instanceof Node)) {
+      return; // Silently ignore invalid targets
+    }
+    return originalObserve.call(this, target, options);
+  };
+}
+// -------------------------------
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
 }
 
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
-  // SAFETY PATCH: Fix "parameter 1 is not of type 'Node'" error.
-  // This is usually caused by browser extensions or hydration mismatches.
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.MutationObserver) {
-      const originalObserve = window.MutationObserver.prototype.observe;
-      window.MutationObserver.prototype.observe = function (target, options) {
-        if (!(target instanceof Node)) {
-          return; // Silently ignore invalid targets
-        }
-        return originalObserve.call(this, target, options);
-      };
-    }
-  }, []);
-
   const firebaseServices = useMemo(() => {
     return initializeFirebase();
   }, []);
