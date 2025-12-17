@@ -38,6 +38,7 @@ const prompt = ai.definePrompt({
   name: 'generateReportPrompt',
   input: {schema: GenerateReportInputSchema},
   output: {schema: GenerateReportOutputSchema},
+  model: 'gemini-3-pro-preview',
   prompt: `You are an expert report generator. You will receive information about JTBD hunches, struggles, business vertical, USP's, a company knowledge base, and agent responses from various platforms.
 
   Your goal is to create a final report that includes all of the information and ensures that all URLs and citations are correctly linked and coherent.

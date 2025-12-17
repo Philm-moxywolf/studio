@@ -42,6 +42,7 @@ const extractionAndClassificationPrompt = ai.definePrompt({
   name: 'extractionAndClassificationPrompt',
   input: {schema: ExtractAndClassifyUserSignalsInputSchema},
   output: {schema: ExtractAndClassifyUserSignalsOutputSchema},
+  model: 'gemini-3-pro-preview',
   prompt: `You are an expert at extracting user signals from various sources and classifying them based on their relevance to specific JTBD hunches and struggles.
 
   Your goal is to analyze the responses from platform agents (social media) and content agents (blogs, articles) to identify relevant user signals and classify them.
