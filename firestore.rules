@@ -1,0 +1,134 @@
+/**
+ * This ruleset enforces a strict user-ownership model for the SignalScope application.
+ *
+ * Core Philosophy:
+ * The security model is built on the principle that users have exclusive control over their
+ * own data. All user-generated content, such as searches and reports, is private and
+ * cannot be accessed or modified by any other user.
+ *
+ * Data Structure:
+ * All user-specific data is organized hierarchically under a top-level `users` collection.
+ * Each user's data is stored in a document tree identified by their unique user ID (UID),
+ * for example: `/users/{userId}/searches/{searchId}`. This path-based ownership is the
+ * cornerstone of the security model.
+ *
+ * Key Security Decisions:
+ * - No User Listing: It is not possible to list all users in the application. Access is
+ *   restricted to individual user documents via their specific path.
+ * - Path-Based Authorization: All authorization decisions are made by comparing the
+ *   `userId` in the document path with the authenticated user's UID (`request.auth.uid`).
+ * - Signup Enabled: A user can create their own user profile document upon signing up,
+ *   which is a critical step in the user lifecycle.
+ * - Relational Integrity: On creation, we enforce that key IDs within a document's data
+ *   (e.g., `user.id`, `search.userId`) match the IDs in the document's path. On update,
+ *   these foundational IDs are immutable to prevent re-linking documents to other users.
+ * - Flexible Data Schema: In this prototyping phase, the rules do not validate the
+ *   specific shape or data types of most fields, allowing for rapid iteration on the
+ *   application's features. Validation is strictly limited to fields essential for
+ *   maintaining ownership and relational integrity.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper Functions
+
+    /**
+     * Checks if a user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user is the owner of the resource
+     * identified by the given userId.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    /**
+    * Checks if the currently authenticated user is the owner of an existing document.
+    * Used for safe update and delete operations.
+    */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * Validates required fields for a new User document to ensure relational integrity.
+     * The document's internal `id` must match the document's path ID (`userId`).
+     */
+    function hasValidUserDataOnCreate(userId) {
+      return request.resource.data.id == userId;
+    }
+
+    /**
+     * Enforces immutability of the User document's ID on update.
+     */
+    function isUserDataImmutableOnUpdate() {
+      return request.resource.data.id == resource.data.id;
+    }
+
+    /**
+     * Validates required fields for a new Search document to ensure relational integrity.
+     * The document's internal `userId` must match the `userId` in the path.
+     */
+    function hasValidSearchDataOnCreate(userId) {
+      return request.resource.data.userId == userId;
+    }
+
+    /**
+     * Enforces immutability of the Search document's `userId` on update.
+     */
+    function isSearchDataImmutableOnUpdate() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+    
+    /**
+     * @description Rules for a user's profile document.
+     * @path /users/{userId}
+     * @allow (create) An authenticated user can create their own user document. (e.g., during signup).
+     * @deny (create) A user attempts to create a profile for another user's ID.
+     * @principle Restricts access to a user's own data tree and enables self-service signup.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false; // Disallow listing of users for privacy.
+      allow create: if isOwner(userId) && hasValidUserDataOnCreate(userId);
+      allow update: if isExistingOwner(userId) && isUserDataImmutableOnUpdate();
+      allow delete: if isExistingOwner(userId);
+    }
+    
+    /**
+     * @description Rules for a user's private searches.
+     * @path /users/{userId}/searches/{searchId}
+     * @allow (create) An authenticated user creates a new search document under their own profile.
+     * @deny (get) An authenticated user attempts to read a search belonging to another user.
+     * @principle Enforces document ownership for all operations within a user's private subcollection.
+     */
+    match /users/{userId}/searches/{searchId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && hasValidSearchDataOnCreate(userId);
+      allow update: if isExistingOwner(userId) && isSearchDataImmutableOnUpdate();
+      allow delete: if isExistingOwner(userId);
+    }
+    
+    /**
+     * @description Rules for reports generated from a user's search.
+     * @path /users/{userId}/reports/{reportId}
+     * @allow (list) An authenticated user lists all reports they have generated.
+     * @deny (delete) A user attempts to delete a report belonging to someone else.
+     * @principle Enforces document ownership for all operations within a user's private subcollection.
+     */
+    match /users/{userId}/reports/{reportId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}

@@ -1,0 +1,179 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the SignalScope application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "email"
+      ]
+    },
+    "Search": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Search",
+      "type": "object",
+      "description": "Represents a search performed by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the search entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Search)"
+        },
+        "jtbdHunch": {
+          "type": "string",
+          "description": "The JTBD hunch entered by the user for this search."
+        },
+        "struggles": {
+          "type": "string",
+          "description": "The struggles entered by the user for this search."
+        },
+        "businessVertical": {
+          "type": "string",
+          "description": "The business vertical entered by the user for this search."
+        },
+        "usps": {
+          "type": "string",
+          "description": "The USPs entered by the user for this search."
+        },
+        "knowledgeBaseFileName": {
+          "type": "string",
+          "description": "File name of the uploaded knowledge base for this search."
+        },
+        "searchDateTime": {
+          "type": "string",
+          "description": "The date and time the search was performed.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "jtbdHunch",
+        "struggles",
+        "businessVertical",
+        "usps",
+        "knowledgeBaseFileName",
+        "searchDateTime"
+      ]
+    },
+    "Report": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Report",
+      "type": "object",
+      "description": "Represents a report generated from a search.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the report entity."
+        },
+        "searchId": {
+          "type": "string",
+          "description": "Reference to Search. (Relationship: Search 1:N Report)"
+        },
+        "reportDateTime": {
+          "type": "string",
+          "description": "The date and time the report was generated.",
+          "format": "date-time"
+        },
+        "markdownContent": {
+          "type": "string",
+          "description": "The content of the report in markdown format."
+        },
+        "pdfFileName": {
+          "type": "string",
+          "description": "File name of the generated PDF report."
+        }
+      },
+      "required": [
+        "id",
+        "searchId",
+        "reportDateTime",
+        "markdownContent",
+        "pdfFileName"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles.  Uses path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/searches/{searchId}",
+        "definition": {
+          "entityName": "Search",
+          "schema": {
+            "$ref": "#/backend/entities/Search"
+          },
+          "description": "Stores searches performed by a user. Uses path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "searchId",
+              "description": "The unique identifier of the search."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/reports/{reportId}",
+        "definition": {
+          "entityName": "Report",
+          "schema": {
+            "$ref": "#/backend/entities/Report"
+          },
+          "description": "Stores reports generated from a search by a user. Uses path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "reportId",
+              "description": "The unique identifier of the report."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to ensure authorization independence, clarity, and scalability for the SignalScope application. We leverage path-based ownership for user data and denormalization where necessary to avoid hierarchical authorization dependencies. This design prioritizes secure `list` operations.  \n\nSpecifically, each user's searches and reports are stored under their respective user ID, enabling simple, secure rules based on `request.auth.uid`. The `searches` and `reports` collections are subcollections of the `/users/{userId}` collection, which clearly defines the ownership. No denormalization is needed because access is granted through the path structure.\n\nThis structure ensures Authorization Independence, because the access rules can use `request.auth.uid` to grant access without needing to read any other documents in Firestore. This structure also enables simple, secure `list` operations because the rules only have to validate that `request.auth.uid == userId` when reading from `/users/{userId}/searches` or `/users/{userId}/reports`. This design uses Structural Segregation to keep the security rules simple and debuggable."
+  }
+}
