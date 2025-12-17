@@ -32,12 +32,7 @@ const ExtractAndClassifyUserSignalsOutputSchema = z.object({
 });
 export type ExtractAndClassifyUserSignalsOutput = z.infer<typeof ExtractAndClassifyUserSignalsOutputSchema>;
 
-// Define the main flow function
-export async function extractAndClassifyUserSignals(input: ExtractAndClassifyUserSignalsInput): Promise<ExtractAndClassifyUserSignalsOutput> {
-  return extractAndClassifyUserSignalsFlow(input);
-}
-
-// Define the prompt
+// Define the prompt globally
 const extractionAndClassificationPrompt = ai.definePrompt({
   name: 'extractionAndClassificationPrompt',
   input: {schema: ExtractAndClassifyUserSignalsInputSchema},
@@ -46,24 +41,29 @@ const extractionAndClassificationPrompt = ai.definePrompt({
 
   Your goal is to analyze the responses from platform agents (social media) and content agents (blogs, articles) to identify relevant user signals and classify them.
 
-  JTBD Hunches: {{{jtbdHunches}}}
-  Struggles: {{{struggles}}}
+  JTBD Hunches: {{jtbdHunches}}
+  Struggles: {{struggles}}
 
   Platform Agent Responses:
   {{#each platformAgentResponses}}
-  - {{{this}}}
+  - {{this}}
   {{/each}}
 
   Content Agent Responses:
   {{#each contentAgentResponses}}
-  - {{{this}}}
+  - {{this}}
   {{/each}}
 
   For each signal, provide the signal itself, its source (URL or platform name), and a relevance score (0-10) indicating how well it aligns with the provided JTBD hunches and struggles. A higher score indicates greater relevance.
-
-  Format your response as a JSON object conforming to the following schema:
-  ${JSON.stringify(ExtractAndClassifyUserSignalsOutputSchema.shape, null, 2)}`,
+`,
 });
+
+
+// Define the main flow function
+export async function extractAndClassifyUserSignals(input: ExtractAndClassifyUserSignalsInput): Promise<ExtractAndClassifyUserSignalsOutput> {
+  return extractAndClassifyUserSignalsFlow(input);
+}
+
 
 // Define the flow
 const extractAndClassifyUserSignalsFlow = ai.defineFlow(

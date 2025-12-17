@@ -30,27 +30,33 @@ const GenerateReportOutputSchema = z.object({
 });
 export type GenerateReportOutput = z.infer<typeof GenerateReportOutputSchema>;
 
-export async function generateReport(input: GenerateReportInput): Promise<GenerateReportOutput> {
-  return generateReportFlow(input);
-}
-
-const prompt = ai.definePrompt({
+const generateReportPrompt = ai.definePrompt({
   name: 'generateReportPrompt',
-  input: {schema: GenerateReportInputSchema},
-  output: {schema: GenerateReportOutputSchema},
+  input: { schema: GenerateReportInputSchema },
+  output: { schema: GenerateReportOutputSchema },
   prompt: `You are an expert report generator. You will receive information about JTBD hunches, struggles, business vertical, USP's, a company knowledge base, and agent responses from various platforms.
 
   Your goal is to create a final report that includes all of the information and ensures that all URLs and citations are correctly linked and coherent.
 
-  JTBD Hunch: {{{jtbdHunches}}}
-  Struggles: {{{struggles}}}
-  Business Vertical: {{{businessVertical}}}
-  USPs: {{{usps}}}
-  Knowledge Base: {{{knowledgeBase}}}
-  Agent Responses: {{{agentResponses}}}
+  JTBD Hunch: {{jtbdHunches}}
+  Struggles: {{struggles}}
+  Business Vertical: {{businessVertical}}
+  USPs: {{usps}}
+  Knowledge Base: {{knowledgeBase}}
+  
+  Agent Responses:
+  {{#each agentResponses}}
+  - {{this}}
+  {{/each}}
 
   Final Report: `,
 });
+
+
+export async function generateReport(input: GenerateReportInput): Promise<GenerateReportOutput> {
+  return generateReportFlow(input);
+}
+
 
 const generateReportFlow = ai.defineFlow(
   {
@@ -59,7 +65,12 @@ const generateReportFlow = ai.defineFlow(
     outputSchema: GenerateReportOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    const { output } = await generateReportPrompt(input);
+
+    if (!output) {
+      throw new Error('AI model returned empty response.');
+    }
+
+    return output;
   }
 );
