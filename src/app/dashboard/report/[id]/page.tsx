@@ -2,7 +2,7 @@
 
 import { notFound } from 'next/navigation';
 import { doc } from 'firebase/firestore';
-import { useDoc, useFirestore, WithId } from '@/firebase';
+import { useDoc, useFirestore, useUser } from '@/firebase';
 import type { Report as ReportType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -62,10 +62,13 @@ function ReportSkeleton() {
 
 export default function ReportPage({ params }: { params: { id:string } }) {
   const firestore = useFirestore();
-  const reportRef = doc(firestore, 'reports', params.id);
+  const { user } = useUser();
+  
+  // Reports are now in a subcollection, so we need the user's UID to build the path
+  const reportRef = user ? doc(firestore, 'users', user.uid, 'reports', params.id) : null;
   const { data: report, isLoading } = useDoc<ReportType>(reportRef);
 
-  if (isLoading) {
+  if (isLoading || !user) { // Also show skeleton while user is loading
     return <ReportSkeleton />;
   }
 

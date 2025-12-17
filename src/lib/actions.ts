@@ -2,7 +2,7 @@
 
 import { generateReport } from '@/ai/flows/generate-report-from-agent-responses';
 import { collection, addDoc, serverTimestamp, getFirestore } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
+import { getDb } from '@/firebase/server-init';
 
 type FormData = {
   jtbdHunches: string;
@@ -11,15 +11,6 @@ type FormData = {
   usps: string;
   knowledgeBase: string;
 };
-
-// This function runs on the server and needs to initialize a server-side instance of Firebase.
-// Note: This is a simplified example. In a real app, you'd want to manage a single
-// server-side Firebase app instance more robustly.
-function getDb() {
-    const { firestore } = initializeFirebase();
-    return firestore;
-}
-
 
 export async function generateReportAction(formData: FormData, uid: string) {
   try {
@@ -46,6 +37,9 @@ export async function generateReportAction(formData: FormData, uid: string) {
       return { error: 'Authentication required.' };
     }
 
+    // The reports are now stored in a subcollection under the user
+    const reportCollectionRef = collection(db, 'users', uid, 'reports');
+
     const reportDoc = {
       userId: uid,
       title: `Report for ${businessVertical} - ${new Date().toLocaleDateString()}`,
@@ -54,7 +48,7 @@ export async function generateReportAction(formData: FormData, uid: string) {
       createdAt: serverTimestamp(),
     };
 
-    const docRef = await addDoc(collection(db, 'reports'), reportDoc);
+    const docRef = await addDoc(reportCollectionRef, reportDoc);
 
     return { reportId: docRef.id };
   } catch (error: any) {

@@ -2,9 +2,9 @@
 
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, Timestamp } from 'firebase/firestore';
 
-import { useFirestore, useUser, useMemoFirebase, useCollection, WithId } from '@/firebase';
+import { useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
 import type { Report as ReportType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -45,9 +45,9 @@ function ReportHistoryList() {
 
     const reportsQuery = useMemoFirebase(() => {
         if (!user) return null;
+        // Query the subcollection for reports belonging to the current user
         return query(
-            collection(firestore, 'reports'),
-            where('userId', '==', user.uid),
+            collection(firestore, 'users', user.uid, 'reports'),
             orderBy('createdAt', 'desc')
         );
     }, [firestore, user]);
