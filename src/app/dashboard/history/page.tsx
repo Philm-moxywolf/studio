@@ -1,12 +1,11 @@
+'use client';
+
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { headers } from 'next/headers';
-import { getDocs, collection, query, where, orderBy } from 'firebase/firestore';
-import { getApps } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
 
-import { db } from '@/lib/firebase';
-import type { Report } from '@/lib/types';
+import { useFirestore, useUser, useMemoFirebase, useCollection, WithId } from '@/firebase';
+import type { Report as ReportType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -14,39 +13,6 @@ import { Badge } from '@/components/ui/badge';
 import { Eye, History, FileWarning } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// This is a workaround to get the user on the server.
-// It's not fully secure and relies on the client being initialized.
-// For production, a proper server-side session management (e.g., with Firebase Admin SDK) is recommended.
-async function getReportsForCurrentUser(): Promise<Report[]> {
-  if (getApps().length === 0) {
-    // Firebase not initialized on the server for this render, cannot fetch data.
-    return [];
-  }
-  
-  // This is a hacky way to get user on server component, not for production
-  const auth = getAuth();
-  const user = auth.currentUser;
-
-  if (!user) {
-    return [];
-  }
-
-  const reportsRef = collection(db, 'reports');
-  const q = query(reportsRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
-  
-  const querySnapshot = await getDocs(q);
-  const reports: Report[] = [];
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    reports.push({
-      id: doc.id,
-      ...data,
-      // Ensure createdAt is a serializable format if needed, but Firestore Timestamp is fine here
-    } as Report);
-  });
-  
-  return reports;
-}
 
 function ReportHistorySkeleton() {
   return (
@@ -73,10 +39,26 @@ function ReportHistorySkeleton() {
   );
 }
 
-async function ReportHistoryList() {
-    const reports = await getReportsForCurrentUser();
+function ReportHistoryList() {
+    const firestore = useFirestore();
+    const { user } = useUser();
 
-    if (reports.length === 0) {
+    const reportsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(
+            collection(firestore, 'reports'),
+            where('userId', '==', user.uid),
+            orderBy('createdAt', 'desc')
+        );
+    }, [firestore, user]);
+
+    const { data: reports, isLoading } = useCollection<ReportType>(reportsQuery);
+
+    if (isLoading) {
+      return <ReportHistorySkeleton />;
+    }
+
+    if (!reports || reports.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border text-center p-12 h-80">
                 <FileWarning className="h-12 w-12 text-muted-foreground" />
@@ -106,7 +88,7 @@ async function ReportHistoryList() {
                 <TableCell className="hidden md:table-cell">
                     <Badge variant="secondary">{report.inputs.businessVertical}</Badge>
                 </TableCell>
-                <TableCell>{report.createdAt.toDate().toLocaleDateString()}</TableCell>
+                <TableCell>{(report.createdAt as Timestamp)?.toDate().toLocaleDateString()}</TableCell>
                 <TableCell className="text-right">
                   <Button asChild variant="ghost" size="sm">
                     <Link href={`/dashboard/report/${report.id}`}>
@@ -123,9 +105,6 @@ async function ReportHistoryList() {
 }
 
 export default function HistoryPage() {
-  // By using headers(), we ensure this component is dynamically rendered.
-  headers();
-    
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <header className="mb-8">

@@ -6,8 +6,7 @@ import { signOut } from 'firebase/auth';
 import { FilePlus2, History, LogOut, User as UserIcon } from 'lucide-react';
 import { useEffect } from 'react';
 
-import { auth } from '@/lib/firebase';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth, useUser } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -35,7 +34,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '../ui/skeleton';
 
 function UserNav() {
-  const { user, loading } = useAuth();
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -43,7 +43,7 @@ function UserNav() {
     router.push('/login');
   };
 
-  if (loading) {
+  if (isUserLoading) {
     return (
       <div className="flex items-center gap-3 px-2">
         <Skeleton className="h-8 w-8 rounded-full" />
@@ -90,17 +90,17 @@ function UserNav() {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, loading } = useAuth();
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!isUserLoading && !user) {
       router.replace('/login');
     }
-  }, [user, loading, router]);
+  }, [user, isUserLoading, router]);
 
 
-  if (loading || !user) {
+  if (isUserLoading || !user) {
     return (
        <div className="flex h-screen w-full items-center justify-center bg-background">
          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />

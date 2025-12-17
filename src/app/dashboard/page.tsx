@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader } from '@/components/icons';
 import { generateReportAction } from '@/lib/actions';
-import { useAuth } from '@/contexts/auth-context';
+import { useUser } from '@/firebase';
 
 const formSchema = z.object({
   jtbdHunches: z.string().min(10, { message: 'Please provide some detail about your JTBD hunches.' }),
@@ -31,7 +31,7 @@ export default function NewReportPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const { user } = useAuth();
+  const { user } = useUser();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
